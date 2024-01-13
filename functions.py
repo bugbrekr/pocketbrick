@@ -155,7 +155,7 @@ class Sensors:
             raise KeyError
 
 class Display:
-    def __init__(self, rgb=True, spi_id=1, sck_pin=10, mosi_pin=11, bl_pin=28):
+    def __init__(self, spi_id=1, sck_pin=10, mosi_pin=11, bl_pin=28):
         self._bl = machine.Pin(bl_pin, machine.Pin.OUT, machine.Pin.PULL_DOWN)
         self.bl(False)
         spi = machine.SPI(spi_id, baudrate=20000000, polarity=0, phase=0,
@@ -163,7 +163,7 @@ class Display:
         )
         self.tft=TFT(spi,16,17,18, 3)
         self.tft.initr()
-        self.tft.rgb(rgb)
+        self.tft.rgb(False)
     def bl(self, value=None):
         if value==None:
             return bool(self._bl.value())
@@ -171,3 +171,6 @@ class Display:
             self._bl.value(1)
         elif value==False:
             self._bl.value(0)
+    def color(self, r, g, b):
+        r,g,b = int(r/4),int(g/4),int(b/4)
+        return (r << 12) + (g << 6) + b
