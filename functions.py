@@ -46,12 +46,6 @@ class Keypad:
             "5": "g", "20": "h", "13": "i", 
             "4": "j", "21": "k", "12": "l"
         } # PIN_NUMBER --> KEYPAD_ID
-        self.button_keypad_map = {
-            "a": ["1", "HOME"], "b": ["2", "UP"], "c": ["3", "ENTER"],
-            "d": ["4", "LEFT"], "e": ["5", "SELECT"], "f": ["6", "RIGHT"],
-            "g": ["7", "BLNK"], "h": ["8", "DOWN"], "i": ["9", "BLNK"],
-            "j": ["MS", "MS"],  "k": ["0", "BLNK"], "l": ["BKSPCE", "BACK"]
-        } # KEYPAD_ID --> FUNCTION?
         self.button_up_ticks = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         self.button_down_ticks = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         self.button_pins = {}
@@ -113,6 +107,8 @@ class Keypad:
         print(p_id, "long press")
     def extra_long_press(self, p_id):
         print(p_id, "extra long press")
+    def get_button_status(self, p_id):
+        return not self.button_pins[p_id].value()
 
 class SDCard:
     def __init__(self,cs_pin:int=9, spi_id:int=1, sck_pin:int=10, mosi_pin:int=11, miso_pin:int=8):
@@ -174,3 +170,7 @@ class Display:
     def color(self, r, g, b):
         r,g,b = int(r/4),int(g/4),int(b/4)
         return (r << 12) + (g << 6) + b
+
+def color(r, g, b):
+    r,g,b = int(r/4),int(g/4),int(b/4)
+    return (r << 12) + (g << 6) + b

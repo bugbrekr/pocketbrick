@@ -25,6 +25,10 @@ class Program:
         raise NotImplementedError
     def on_keypress(self, key, press_type, p_id):
         raise NotImplementedError
+    def pause(self):
+        raise NotImplementedError
+    def resume(self):
+        raise NotImplementedError
 
 class StatusBar:
     def __init__(self, jacc_os):
@@ -32,10 +36,16 @@ class StatusBar:
         ba = bytearray(128 * 10 * 2)
         self.fb = FrameBuffer(ba, 128, 10, RGB565)
         self.keymap_index = 0
+        self.auto_update_enable = True
         self.timer = machine.Timer()
-        self.timer.init(mode=machine.Timer.PERIODIC, period=10000, callback=self.update)
+        self.timer.init(mode=machine.Timer.ONE_SHOT, period=10000, callback=self.update)
         self.sensors = functions.Sensors()
         self.update()
+    def auto_update(self, state=None):
+        if state == None:
+            self.auto_update_enable = not self.auto_update_enable
+        else:
+            self.auto_update_enable = state
     def set_keymap_index(self, index:int):
         self.keymap_index = index
         self.update()
@@ -52,6 +62,8 @@ class StatusBar:
         self.fb.text(f"{batt_percent}", 0, 0, 65535)
         self.fb.hline(0, 8, 127, 65535)
         self.jacc_os._statusbar_draw_buffer(self.fb)
+        if self.auto_update_enable == True:
+            self.timer.init(mode=machine.Timer.ONE_SHOT, period=10000, callback=self.update)
 
 class JACC_OS:
     """
@@ -61,9 +73,10 @@ class JACC_OS:
     SLEEP_TIMEOUT_PERIOD = 30000 # 10 seconds
     LONG_PRESS_THRESHOLD_MS = 600
     EXTRA_LONG_PRESS_THRESHOLD_MS = 3000
-    def __init__(self, display, keypad):
+    def __init__(self, display, keypad, sensors):
         self.display = display
         self.keypad = keypad
+        self.sensors = sensors
         self.tft = self.display.tft
         self.keypad.register_callback(self._button_press)
         self.proc_status = 0
@@ -73,7 +86,7 @@ class JACC_OS:
         self.active_keymap = 0
         self.keymap = {
                 -1: {
-                    "a": ("RESET",), "b": (), "c": (),
+                    "a": ("RESET",), "b": (), "c": ("EXIT",),
                     "d": (), "e": (), "f": (),
                     "g": (), "h": (), "i": ("TORCH",),
                     "j": ("MS",), "k": (), "l": ("SLEEP",), 
@@ -93,14 +106,23 @@ class JACC_OS:
         self.torch_fb.fill(65535)
     def sleep_trigger(self, _):
         if self.keep_awake == 0:
-            self.display.bl(False)
+            self.sleep()
     def _start_sleep_timer(self):
         self.sleep_timer.init(mode=machine.Timer.ONE_SHOT, period=self.SLEEP_TIMEOUT_PERIOD, callback=self.sleep_trigger)
         self.last_keypress_timestamp = time.time()
+    def sleep(self):
+        self.pause_program()
+        self.statusbar.auto_update_enable = False
+        self.display.bl(False)
+    def wakeup(self):
+        self.resume_program()
+        self.statusbar.auto_update_enable = True
+        self.statusbar.update()
+        self.display.bl(True)
     def _button_press(self, p_id, dur):
         self._start_sleep_timer()
         if self.display.bl() == False:
-            self.display.bl(True)
+            self.wakeup()
             return
         if dur < self.LONG_PRESS_THRESHOLD_MS:
             press_type = 0
@@ -154,15 +176,17 @@ class JACC_OS:
         elif key == "EXIT":
             self._exit()
         elif key == "SLEEP":
-            self.display.bl(False)
+            self.sleep()
         elif key == "RESET":
             pass
         elif key == "TORCH":
             if self.torch_status == 1:
                 self.torch_status = 0
+                self.resume_program()
                 self._draw_buffer(self._last_drawn_fb)
             else:
                 self.torch_status = 1
+                self.pause_program()
                 self.tft.image(0, 10, 127, 127, self.torch_fb)
     def button_callback(self, p_id, press_type):
         keymap = self.keymap[self.active_keymap]
@@ -206,3 +230,16 @@ class JACC_OS:
             if self.proc_status == 0:
                 return
             time.sleep(0.1)
+    def get_button_status(self, p_id):
+        return self.keypad.get_button_status(p_id)
+    def pause_program(self):
+        try:
+            self.proc.pause()
+        except NotImplementedError:
+            pass
+    def resume_program(self):
+        try:
+            self.proc.resume()
+        except NotImplementedError:
+            pass
+        

@@ -153,14 +153,6 @@ class Textbox:
             self._newline()
             return
         _glyph, char_height, char_width = self.font.get_ch(char)
-        print(char_height, char_width)
-        print(_glyph.hex())
-        print(len(_glyph.hex()))
-        print(bin(int(_glyph.hex(), 16)))
-        glyph = b""
-        for pix in _glyph.hex():
-            print(int(pix, 16))
-            #pix *= self.fgcolor
         self.glyph = _glyph
         self.char_height = char_height
         self.char_width = char_width
@@ -195,6 +187,9 @@ class Textbox:
         xpos = 0
         for char in text:
             glyph, width = self._get_char(char, False)
-            fbc = framebuf.FrameBuffer(glyph, width, self.height, framebuf.RGB565)
-            self.fb.blit(fbc, xpos, 0, 0)
+            fbc = framebuf.FrameBuffer(glyph, width, self.height, framebuf.MONO_HLSB)
+            fbbb = framebuf.FrameBuffer(bytearray(2*1*2), 2, 1, framebuf.RGB565)
+            fbbb.pixel(0, 0, 0)
+            fbbb.pixel(1, 0, 65535)
+            self.fb.blit(fbc, xpos, 0, 0, fbbb)
             xpos += width
