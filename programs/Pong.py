@@ -2,11 +2,10 @@ from programs.BaseProgram import BaseProgram
 import machine
 
 def color(r, g, b):
-    r,g,b = int(r/4),int(g/4),int(b/4)
-    return (r << 12) + (g << 6) + b
+    return ((b//8 & 0xF8) << 8) | ((r//8 & 0xFC) << 3) | (g//4 >> 3)
 
 class Program(BaseProgram):
-    WINNING_SCORE = 5
+    WINNING_SCORE = 1
     def real_run(self, _=None):
         self.timer.init(mode=1, freq=20, callback=self.mainloop)
     def run(self):
@@ -24,7 +23,7 @@ class Program(BaseProgram):
         self.fb.rect(2, paddle_1, 5, 30, color(255, 255, 255), True)
         self.fb.rect(120, paddle_2, 5, 30, color(255, 255, 255), True)
         self.fb.ellipse(ball_pos[0], ball_pos[1], 2, 2, color(255, 255, 255), True)
-        self.fb.text(f"{self.score[0]}:{self.score[1]}", 50, 5, color(0, 255, 255))
+        self.fb.text(f"{self.score[0]}:{self.score[1]}", 50, 5, color(0, 255, 127))
         self.update()
     def reset_ball(self):
         self.ball_pos = [63, 58]
@@ -53,12 +52,12 @@ class Program(BaseProgram):
         self.score[player] += 1
     def draw_game_over_screen(self, player):
         self.fb.rect(14, 28, 100, 60, color(0, 0, 0), True)
-        self.fb.rect(14, 28, 100, 60, color(0, 0, 255))
-        self.fb.text("GAME OVER", 28, 40, color(0, 0, 255))
-        self.fb.text(f"{player} WINS!", 18, 60, color(0, 0, 255))
+        self.fb.rect(14, 28, 100, 60, color(0, 255, 0))
+        self.fb.text("GAME OVER", 28, 40, color(0, 255, 0))
+        self.fb.text(f"{player} WINS!", 18, 60, color(0, 255, 0))
         self.update()
     def mainloop(self, _):
-        up, down = self.jacc_os.get_button_status("b"), self.jacc_os.get_button_status("e")
+        up, down = self.jacc_os.get_button_status("c"), self.jacc_os.get_button_status("f")
         if up == 1 and down == 1:
             pass
         elif up == 1:

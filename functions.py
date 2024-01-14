@@ -168,9 +168,7 @@ class Display:
         elif value==False:
             self._bl.value(0)
     def color(self, r, g, b):
-        r,g,b = int(r/4),int(g/4),int(b/4)
-        return (r << 12) + (g << 6) + b
+        return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
 
 def color(r, g, b):
-    r,g,b = int(r/4),int(g/4),int(b/4)
-    return (r << 12) + (g << 6) + b
+    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)

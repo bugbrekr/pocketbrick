@@ -1,9 +1,10 @@
 import machine
 
-class BaseProgram:
-    def __init__(self, jacc_os, fb):
+class BaseProgram(object):
+    def __init__(self, jacc_os, fb, context):
         self.jacc_os = jacc_os
         self.fb = fb
+        self.context = context
         self.fb.fill(0) # clear window display
         self.update() # update display with cleared image
         self.timer = machine.Timer() # main timer for periodic application activities (automatically deinit'd)
@@ -13,7 +14,6 @@ class BaseProgram:
         self.timer.deinit() # deinit timer
         self.fb.fill(0)
         self.update()
-        del self.fb
         try:
             self.exit() # attempt graceful exit if supported
         except NotImplementedError:
@@ -28,4 +28,6 @@ class BaseProgram:
         raise NotImplementedError
     def resume(self):
         raise NotImplementedError
+    def color(self, r, g, b):
+        return ((b//8 & 0xF8) << 8) | ((r//8 & 0xFC) << 3) | (g//4 >> 3)
 

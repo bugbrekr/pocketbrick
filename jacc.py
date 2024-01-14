@@ -33,18 +33,20 @@ class StatusBar:
         batt_percent = self.sensors["battery_percent"]
         if batt_percent >= 100:
             batt_percent = "^^"
-        mem_alloc = gc.mem_alloc()
-        mem_percent = round(mem_alloc/(mem_alloc+gc.mem_free())*100)
+        #mem_alloc = gc.mem_alloc()
+        #mem_percent = round(mem_alloc/(mem_alloc+gc.mem_free())*100)
         self.fb.fill(0)
         self.fb.text(str(self.keymap_index), 119, 0, 65535) # keymap
         self.fb.text(f"{dt_str[4]}:{dt_str[5]}", 44, 0, 65535) # time
         self.fb.rect(0, 0, 16, 8, 65535)
         self.fb.text(str(batt_percent), 0, 0, 65535)
-        self.fb.text(str(mem_percent), 20, 0, 65535)
+        #self.fb.text(str(mem_percent), 20, 0, 65535)
         self.fb.hline(0, 8, 127, 65535)
         self.jacc_os._statusbar_draw_buffer(self.fb)
         if self.auto_update_enable == True:
-            self.timer.init(mode=machine.Timer.ONE_SHOT, period=500, callback=self.update)
+            self.timer.init(mode=machine.Timer.ONE_SHOT, period=30000, callback=self.update)
+    def color(self, r, g, b):
+        return ((b//8 & 0xF8) << 8) | ((r//8 & 0xFC) << 3) | (g//4 >> 3)
 
 class GarbageCollector:
     def __init__(self, threshold=143462):
@@ -66,10 +68,11 @@ class JACC_OS:
     SLEEP_TIMEOUT_PERIOD = 30000
     LONG_PRESS_THRESHOLD_MS = 600
     EXTRA_LONG_PRESS_THRESHOLD_MS = 3000
-    def __init__(self, display, keypad, sensors, launcher_program):
+    def __init__(self, display, keypad, sensors, wlan, launcher_program):
         self.display = display
         self.keypad = keypad
         self.sensors = sensors
+        self.wlan = wlan
         self.tft = self.display.tft
         self.gc = GarbageCollector()
         self.keypad.register_callback(self._button_press)
@@ -99,7 +102,6 @@ class JACC_OS:
         self.torch_fb = FrameBuffer(bytearray(128 * 117 * 2), 128, 117, RGB565)
         self.torch_fb.fill(65535)
         self.launcher_program = launcher_program
-        self.is_launcher_running = False
         ba = bytearray(128 * 117 * 2)
         self.fb_p = FrameBuffer(ba, 128, 117, RGB565)
     def sleep_trigger(self, _):
@@ -174,7 +176,8 @@ class JACC_OS:
             self.active_keymap = -1
             self.statusbar.set_keymap_index("^")
         elif key == "EXIT":
-            self.exit_program(True)
+            self.exit_program()
+            self.launcher()
         elif key == "SLEEP":
             self.sleep()
         elif key == "RESET":
@@ -205,13 +208,10 @@ class JACC_OS:
                 self.proc.on_keypress(key, press_type, p_id)
             except NotImplementedError:
                 pass # program doesnt support keypresses
-    def run_program(self, program):
+    def run_program(self, program, context:dict={}):
         if self.proc_status == 1:
-            if self.is_launcher_running:
-                self.exit_program(False)
-            else:
-                self.exit_program(True)
-        self.proc = program(self, self.fb_p)
+            self.exit_program()
+        self.proc = program(self, self.fb_p, context)
         self.proc_status = 1
         self.proc.run()
     def _draw_buffer(self, fb):
@@ -222,15 +222,13 @@ class JACC_OS:
             self.tft.image(0, 10, 127, 127, fb)
     def _statusbar_draw_buffer(self, fb):
         self.tft.image(0, 0, 127, 10, fb)
-    def exit_program(self, start_launcher):
-        self.is_launcher_running = False
-        self.proc._exit() # send graceful exit signal
+    def exit_program(self):
+        if self.proc_status == 1:
+            self.proc._exit() # send graceful exit signal
+            del self.proc
         self.deregister_keymap() # unsubscribe keypresses
         self.proc_status = 0
-        del self.proc
         self.gc.collect()
-        if start_launcher:
-            self.launcher()
     def wait_for_idle(self):
         while True:
             if self.proc_status == 0:
@@ -253,6 +251,5 @@ class JACC_OS:
         except NotImplementedError:
             pass
     def launcher(self):
-        self.is_launcher_running = True
         self.run_program(self.launcher_program)
         

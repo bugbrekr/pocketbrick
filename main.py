@@ -11,6 +11,7 @@ import program_manager
 import jacc
 
 wlan = network.WLAN(network.STA_IF)
+wlan.active(True)
 
 keypad = functions.Keypad()
 display = functions.Display()
@@ -20,6 +21,8 @@ display.bl(True)
 tft = display.tft
 tft.fill(0)
 
-jacc_os = jacc.JACC_OS(display, keypad, sensors, program_manager.load_program("Launcher"))
+#tft.fill(display.color(255, 0, 0))
+
+jacc_os = jacc.JACC_OS(display, keypad, sensors, wlan, program_manager.load_program("Launcher"))
 jacc_os.launcher()
 #jacc_os.run_program(program_manager.load_program("Launcher"))
