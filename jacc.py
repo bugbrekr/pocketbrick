@@ -2,33 +2,10 @@ from framebuf import FrameBuffer, RGB565
 import machine
 import time
 import functions
+import gc
 
 def TFTColor( aR, aG, aB ) :
   return ((aR & 0xF8) << 8) | ((aG & 0xFC) << 3) | (aB >> 3)
-
-class Program:
-    def __init__(self, jacc_os, fb):
-        self.jacc_os = jacc_os
-        self.fb = fb
-        self.fb.fill(0) # clear window display
-        self.update() # update display with cleared image
-        self.timer = machine.Timer() # main timer for periodic application activities (automatically deinit'd)
-    def update(self):
-        self.jacc_os._draw_buffer(self.fb)
-    def _exit(self):
-        self.timer.deinit() # deinit timer
-        try:
-            self.exit() # attempt graceful exit if supported
-        except NotImplementedError:
-            pass # graceful exit not implemented
-    def exit(self):
-        raise NotImplementedError
-    def on_keypress(self, key, press_type, p_id):
-        raise NotImplementedError
-    def pause(self):
-        raise NotImplementedError
-    def resume(self):
-        raise NotImplementedError
 
 class StatusBar:
     def __init__(self, jacc_os):
@@ -55,22 +32,37 @@ class StatusBar:
         batt_percent = self.sensors["battery_percent"]
         if batt_percent >= 100:
             batt_percent = "^^"
+        mem_alloc = gc.mem_alloc()
+        mem_percent = round(mem_alloc/(mem_alloc+gc.mem_free())*100)
         self.fb.fill(0)
         self.fb.text(str(self.keymap_index), 119, 0, 65535) # keymap
         self.fb.text(f"{dt_str[4]}:{dt_str[5]}", 44, 0, 65535) # time
         self.fb.rect(0, 0, 16, 8, 65535)
-        self.fb.text(f"{batt_percent}", 0, 0, 65535)
+        self.fb.text(str(batt_percent), 0, 0, 65535)
+        self.fb.text(str(mem_percent), 20, 0, 65535)
         self.fb.hline(0, 8, 127, 65535)
         self.jacc_os._statusbar_draw_buffer(self.fb)
         if self.auto_update_enable == True:
-            self.timer.init(mode=machine.Timer.ONE_SHOT, period=10000, callback=self.update)
+            self.timer.init(mode=machine.Timer.ONE_SHOT, period=500, callback=self.update)
+
+class GarbageCollector:
+    def __init__(self, threshold=143462):
+        gc.threshold(threshold)
+        self.timer = machine.Timer()
+        self.timer.init(mode=1, period=2000, callback=self.collect)
+    def collect(self, _=None):
+        gc.collect()
+    def pause(self):
+        self.timer.deinit()
+    def resume(self):
+        self.timer.init(mode=1, period=2000, callback=self.collect)
 
 class JACC_OS:
     """
     [JACC_OS - Just A Cool Calculator OS]
     Basic OS to run and handle programs.
     """
-    SLEEP_TIMEOUT_PERIOD = 30000 # 10 seconds
+    SLEEP_TIMEOUT_PERIOD = 30000
     LONG_PRESS_THRESHOLD_MS = 600
     EXTRA_LONG_PRESS_THRESHOLD_MS = 3000
     def __init__(self, display, keypad, sensors):
@@ -78,6 +70,7 @@ class JACC_OS:
         self.keypad = keypad
         self.sensors = sensors
         self.tft = self.display.tft
+        self.gc = GarbageCollector()
         self.keypad.register_callback(self._button_press)
         self.proc_status = 0
         self.sleep_timer = machine.Timer()
@@ -104,6 +97,7 @@ class JACC_OS:
         self.torch_status = 0
         self.torch_fb = FrameBuffer(bytearray(128 * 117 * 2), 128, 117, RGB565)
         self.torch_fb.fill(65535)
+        
     def sleep_trigger(self, _):
         if self.keep_awake == 0:
             self.sleep()
@@ -112,10 +106,12 @@ class JACC_OS:
         self.last_keypress_timestamp = time.time()
     def sleep(self):
         self.pause_program()
+        self.gc.pause()
         self.statusbar.auto_update_enable = False
         self.display.bl(False)
     def wakeup(self):
         self.resume_program()
+        self.gc.resume()
         self.statusbar.auto_update_enable = True
         self.statusbar.update()
         self.display.bl(True)
