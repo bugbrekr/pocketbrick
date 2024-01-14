@@ -20,7 +20,5 @@ display.bl(True)
 tft = display.tft
 tft.fill(0)
 
-#tft.fill(display.color(255, 0, 255))
-
 jacc_os = jacc.JACC_OS(display, keypad, sensors)
 jacc_os.run_program(program_manager.load_program("Pong"))

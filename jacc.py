@@ -196,10 +196,11 @@ class JACC_OS:
         if self.active_keymap < 0 or p_id == "j":
             self.system_button_callback(key)
             return
-        try:
-            self.proc.on_keypress(key, press_type, p_id)
-        except NotImplementedError:
-            pass # program doesnt support keypresses
+        if self.proc_status == 1:
+            try:
+                self.proc.on_keypress(key, press_type, p_id)
+            except NotImplementedError:
+                pass # program doesnt support keypresses
     def run_program(self, program):
         if self.proc_status == 1:
             self._exit()
@@ -217,10 +218,10 @@ class JACC_OS:
     def _statusbar_draw_buffer(self, fb):
         self.tft.image(0, 0, 127, 10, fb)
     def _exit(self):
-        self.tft.fill(0)
         self.proc._exit() # send graceful exit signal
         self.deregister_keymap() # unsubscribe keypresses
         self.proc_status = 0
+        del self.proc
     def wait_for_idle(self):
         while True:
             if self.proc_status == 0:
@@ -229,11 +230,15 @@ class JACC_OS:
     def get_button_status(self, p_id):
         return self.keypad.get_button_status(p_id)
     def pause_program(self):
+        if self.proc_status == 0:
+            return
         try:
             self.proc.pause()
         except NotImplementedError:
             pass
     def resume_program(self):
+        if self.proc_status == 0:
+            return
         try:
             self.proc.resume()
         except NotImplementedError:
