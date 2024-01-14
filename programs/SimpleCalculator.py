@@ -16,7 +16,7 @@ class Program(BaseProgram):
                 "j": None, "k": "DOWN", "l": "=",
             }
         ]
-        self.jacc_os.register_keymap(keymap)
+        self.register_keymap(keymap)
         self.selector = -1
         self.number_1 = ""
         self.operation = ""

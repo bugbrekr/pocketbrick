@@ -11,10 +11,15 @@ class BaseProgram:
         self.jacc_os._draw_buffer(self.fb)
     def _exit(self):
         self.timer.deinit() # deinit timer
+        self.fb.fill(0)
+        self.update()
+        del self.fb
         try:
             self.exit() # attempt graceful exit if supported
         except NotImplementedError:
             pass # graceful exit not implemented
+    def register_keymap(self, keymap):
+        self.jacc_os.register_keymap(keymap)
     def exit(self):
         raise NotImplementedError
     def on_keypress(self, key, press_type, p_id):

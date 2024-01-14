@@ -3,6 +3,7 @@ import machine
 import time
 import functions
 import gc
+import micropython
 
 def TFTColor( aR, aG, aB ) :
   return ((aR & 0xF8) << 8) | ((aG & 0xFC) << 3) | (aB >> 3)
@@ -65,7 +66,7 @@ class JACC_OS:
     SLEEP_TIMEOUT_PERIOD = 30000
     LONG_PRESS_THRESHOLD_MS = 600
     EXTRA_LONG_PRESS_THRESHOLD_MS = 3000
-    def __init__(self, display, keypad, sensors):
+    def __init__(self, display, keypad, sensors, launcher_program):
         self.display = display
         self.keypad = keypad
         self.sensors = sensors
@@ -97,7 +98,10 @@ class JACC_OS:
         self.torch_status = 0
         self.torch_fb = FrameBuffer(bytearray(128 * 117 * 2), 128, 117, RGB565)
         self.torch_fb.fill(65535)
-        
+        self.launcher_program = launcher_program
+        self.is_launcher_running = False
+        ba = bytearray(128 * 117 * 2)
+        self.fb_p = FrameBuffer(ba, 128, 117, RGB565)
     def sleep_trigger(self, _):
         if self.keep_awake == 0:
             self.sleep()
@@ -170,7 +174,7 @@ class JACC_OS:
             self.active_keymap = -1
             self.statusbar.set_keymap_index("^")
         elif key == "EXIT":
-            self._exit()
+            self.exit_program(True)
         elif key == "SLEEP":
             self.sleep()
         elif key == "RESET":
@@ -203,10 +207,11 @@ class JACC_OS:
                 pass # program doesnt support keypresses
     def run_program(self, program):
         if self.proc_status == 1:
-            self._exit()
-        ba = bytearray(128 * 117 * 2)
-        fb = FrameBuffer(ba, 128, 117, RGB565)
-        self.proc = program(self, fb)
+            if self.is_launcher_running:
+                self.exit_program(False)
+            else:
+                self.exit_program(True)
+        self.proc = program(self, self.fb_p)
         self.proc_status = 1
         self.proc.run()
     def _draw_buffer(self, fb):
@@ -217,11 +222,15 @@ class JACC_OS:
             self.tft.image(0, 10, 127, 127, fb)
     def _statusbar_draw_buffer(self, fb):
         self.tft.image(0, 0, 127, 10, fb)
-    def _exit(self):
+    def exit_program(self, start_launcher):
+        self.is_launcher_running = False
         self.proc._exit() # send graceful exit signal
         self.deregister_keymap() # unsubscribe keypresses
         self.proc_status = 0
         del self.proc
+        self.gc.collect()
+        if start_launcher:
+            self.launcher()
     def wait_for_idle(self):
         while True:
             if self.proc_status == 0:
@@ -243,4 +252,7 @@ class JACC_OS:
             self.proc.resume()
         except NotImplementedError:
             pass
+    def launcher(self):
+        self.is_launcher_running = True
+        self.run_program(self.launcher_program)
         

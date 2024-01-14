@@ -1,5 +1,4 @@
 from programs.BaseProgram import BaseProgram
-import time
 import machine
 
 def color(r, g, b):
@@ -15,7 +14,7 @@ class Program(BaseProgram):
         self.paddle_2 = 43
         self.reset_ball()
         self.score = [0, 0]
-        self.jacc_os.register_keymap([{
+        self.register_keymap([{
             "l": "PAUSE"
             }])
         self.is_paused = False

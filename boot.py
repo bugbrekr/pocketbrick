@@ -1,12 +1,13 @@
 import network
 import gc
+import micropython
 #import machine
 #import time
 
 network.country("IN")
 network.hostname("pocketbrick")
 
-gc.threshold(143462)
+micropython.alloc_emergency_exception_buf(100)
 
 #led = machine.Pin("LED", machine.Pin.OUT)
 #led.toggle()
