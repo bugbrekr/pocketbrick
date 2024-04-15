@@ -68,11 +68,12 @@ class JACC_OS:
     SLEEP_TIMEOUT_PERIOD = 30000
     LONG_PRESS_THRESHOLD_MS = 600
     EXTRA_LONG_PRESS_THRESHOLD_MS = 3000
-    def __init__(self, display, keypad, sensors, wlan, launcher_program):
+    def __init__(self, display, keypad, sensors, wlan, sdcard, launcher_program):
         self.display = display
         self.keypad = keypad
         self.sensors = sensors
         self.wlan = wlan
+        self.sdcard = sdcard
         self.tft = self.display.tft
         self.gc = GarbageCollector()
         self.keypad.register_callback(self._button_press)
@@ -187,10 +188,12 @@ class JACC_OS:
                 self.torch_status = 0
                 self.resume_program()
                 self._draw_buffer(self._last_drawn_fb)
+                self.keep_awake = 0
             else:
                 self.torch_status = 1
                 self.pause_program()
                 self.tft.image(0, 10, 127, 127, self.torch_fb)
+                self.keep_awake = 1
     def button_callback(self, p_id, press_type):
         keymap = self.keymap[self.active_keymap]
         _key = keymap[p_id]
@@ -229,6 +232,7 @@ class JACC_OS:
         self.deregister_keymap() # unsubscribe keypresses
         self.proc_status = 0
         self.gc.collect()
+        self.statusbar.set_keymap_index(self.active_keymap)
     def wait_for_idle(self):
         while True:
             if self.proc_status == 0:

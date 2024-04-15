@@ -79,6 +79,7 @@ class SDCard:
             if self.cmd(0, 0, 0x95) == _R1_IDLE_STATE:
                 break
         else:
+            self.spi.deinit()
             raise OSError("no SD card")
 
         # CMD8: determine card version

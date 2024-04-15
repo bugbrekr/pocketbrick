@@ -22,6 +22,14 @@ class Program(BaseProgram):
         self.operation = ""
         self.number_2 = ""
         self.solution = ""
+        self.draw()
+    def draw(self):
+        self.fb.fill(0)
+        self.fb.text("{: >16}".format(self.number_1), 0, 8, 65535)
+        self.fb.text("{: >16}".format(self.operation), 0, 16, 65535)
+        self.fb.text("{: >16}".format(self.number_2), 0, 24, 65535)
+        self.fb.text("="+"{: >15}".format(self.solution), 0, 40, 65535)
+        self.update()
     def _evaluate(self, number_1, operation, number_2):
         if operation == "+":
             return number_1+number_2
@@ -136,9 +144,4 @@ class Program(BaseProgram):
             self.number_2 = ""
             self.solution = ""
             self.selector = -1
-        self.fb.fill(0)
-        self.fb.text("{: >16}".format(self.number_1), 0, 8, 65535)
-        self.fb.text("{: >16}".format(self.operation), 0, 16, 65535)
-        self.fb.text("{: >16}".format(self.number_2), 0, 24, 65535)
-        self.fb.text("="+"{: >15}".format(self.solution), 0, 40, 65535)
-        self.update()
+        self.draw()

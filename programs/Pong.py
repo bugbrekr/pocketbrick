@@ -5,7 +5,7 @@ def color(r, g, b):
     return ((b//8 & 0xF8) << 8) | ((r//8 & 0xFC) << 3) | (g//4 >> 3)
 
 class Program(BaseProgram):
-    WINNING_SCORE = 1
+    WINNING_SCORE = 5
     def real_run(self, _=None):
         self.timer.init(mode=1, freq=20, callback=self.mainloop)
     def run(self):

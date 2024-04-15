@@ -112,43 +112,40 @@ class Keypad:
 
 class SDCard:
     def __init__(self,cs_pin:int=9, spi_id:int=1, sck_pin:int=10, mosi_pin:int=11, miso_pin:int=8):
-        cs = machine.Pin(cs_pin, machine.Pin.OUT)
-        spi = machine.SPI(spi_id,
-            baudrate=1000000,
+        self._cs_pin = cs_pin
+        self._spi_id = spi_id
+        self._sck_pin = sck_pin
+        self._mosi_pin = mosi_pin
+        self._miso_pin = miso_pin
+        self.mount_point = None
+        self.is_attached = False
+        self.is_mounted = False
+    def attach(self):
+        cs = machine.Pin(self._cs_pin, machine.Pin.OUT)
+        spi = machine.SPI(self._spi_id,
+            baudrate=20000000,
             polarity=0,
             phase=0,
             bits=8,
             firstbit=machine.SPI.MSB,
-            sck=machine.Pin(sck_pin),
-            mosi=machine.Pin(mosi_pin),
-            miso=machine.Pin(miso_pin))
-        self.sd = sdcard.SDCard(spi, cs)
+            sck=machine.Pin(self._sck_pin),
+            mosi=machine.Pin(self._mosi_pin),
+            miso=machine.Pin(self._miso_pin))
+        try:
+            self.sd = sdcard.SDCard(spi, cs)
+        except OSError:
+            self.is_attached = False
+            raise OSError("no SD card")
         self.vfs = os.VfsFat(self.sd)
-        self.self.mount_point = ""
-    def mount(self, mount_point:str="/disk"):
+        self.is_attached = True
+    def mount(self, mount_point:str="/volume"):
         self.mount_point = mount_point
         os.mount(self.vfs, mount_point)
+        self.is_mounted = True
     def unmount(self):
-        if self.mount_point != "":
-            os.unmount(self.mount_point)
-            self.mount_point = ""
-
-class Sensors:
-    BATTERY_BASE_VOLTAGE = 3.4
-    BATTERY_CONVERSION_FACTOR = (BATTERY_BASE_VOLTAGE / (65535)) * 3
-    def __init__(self):
-        machine.Pin(25, machine.Pin.OUT).value(True)
-        machine.Pin(29, machine.Pin.IN)
-        self.battery_adc = machine.ADC(3)
-    def _get_battery_voltage(self):
-        return self.battery_adc.read_u16()*self.BATTERY_CONVERSION_FACTOR
-    def __getitem__(self, key):
-        if key == "battery_voltage":
-            return round(self._get_battery_voltage(), 2)
-        elif key == "battery_percent":
-            return round((self._get_battery_voltage()-3.2)/.01)
-        else:
-            raise KeyError
+        os.umount(self.mount_point)
+        self.mount_point = None
+        self.is_mounted = False
 
 class Display:
     def __init__(self, spi_id=1, sck_pin=10, mosi_pin=11, bl_pin=28):
@@ -169,6 +166,26 @@ class Display:
             self._bl.value(0)
     def color(self, r, g, b):
         return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
+
+class Sensors:
+    BATTERY_BASE_VOLTAGE = 3.4
+    BATTERY_CONVERSION_FACTOR = (BATTERY_BASE_VOLTAGE / (65535)) * 3
+    def __init__(self):
+        machine.Pin(25, machine.Pin.OUT).value(True)
+        machine.Pin(29, machine.Pin.IN)
+        self.battery_adc = machine.ADC(3)
+    def _get_battery_voltage(self):
+        machine.Pin(25, machine.Pin.OUT).value(True)
+        machine.Pin(29, machine.Pin.IN)
+        self.battery_adc = machine.ADC(3)
+        return self.battery_adc.read_u16()*self.BATTERY_CONVERSION_FACTOR
+    def __getitem__(self, key):
+        if key == "battery_voltage":
+            return round(self._get_battery_voltage(), 2)
+        elif key == "battery_percent":
+            return round((self._get_battery_voltage()-3.2)/.01)
+        else:
+            raise KeyError
 
 def color(r, g, b):
     return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)

@@ -21,11 +21,14 @@ class Program(BaseProgram):
     def on_keypress(self, key, _press_type, _p_id):
         self.fb.fill(0)
         if key == "LIGHT":
-            self.mqtt.publish("hass", json.dumps({"name": "light", "action": "toggle"}))
+            self.mqtt.publish("hass/service", json.dumps({"service": "light.toggle", "entity_id": "light.batten"}))
             self.fb.text("Toggled light", 0, 0, color(255, 255, 255))
         elif key == "FAN":
-            self.mqtt.publish("hass", json.dumps({"name": "fan", "action": "toggle"}))
+            self.mqtt.publish("hass/service", json.dumps({"service": "switch.toggle", "entity_id": "switch.fan"}))
             self.fb.text("Toggled fan", 0, 0, color(255, 255, 255))
         self.update()
     def exit(self):
-        self.mqtt.disconnect()
+        try:
+            self.mqtt.disconnect()
+        except:
+            pass
